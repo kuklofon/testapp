@@ -1,0 +1,32 @@
+---
+- name: Configure SSH and create a new user
+  hosts: your_target_host
+  become: yes
+  tasks:
+    - name: Create a new user 'cloudru'
+      user:
+        name: cloudru
+        password: "{{ 'cloudpass' | password_hash('sha512') }}"
+        shell: /bin/bash
+        createhome: yes
+
+    - name: Allow SSH key-based authentication for 'cloudru'
+      authorized_key:
+        user: cloudru
+        key: "{{ lookup('file', 'public_key.pub') }}"
+        state: present
+
+    - name: Disable SSH root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+        state: present
+      notify:
+        - Restart SSH service
+
+  handlers:
+    - name: Restart SSH service
+      service:
+        name: sshd
+        state: restarted

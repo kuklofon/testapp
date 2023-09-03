@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-namespace
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+  namespace: my-namespace
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-app-container
+          image: my-python-app:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: UUID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+  namespace: my-namespace
+spec:
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+
+---
+
+apiVersion: v1
+kind: PodDisruptionBudget
+metadata:
+  name: my-app-pdb
+  namespace: my-namespace
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: my-app
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+  namespace: my-namespace
+spec:
+  template:
+    spec:
+      containers:
+        - name: my-app-container
+          readinessProbe:
+            httpGet:
+              path: /hostname
+              port: 8000
+          livenessProbe:
+            httpGet:
+              path: /hostname
+              port: 8000
